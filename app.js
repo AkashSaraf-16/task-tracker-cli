@@ -25,15 +25,28 @@ if (!fs.existsSync("./tasks.json")) {
   }
 }
 
+function readAndWrite(opsFunction) {
+  fs.readFile("./tasks.json", (err, data) => {
+    if (err) {
+      console.log("Error in reading the tasks.json file: ", err);
+      throw err;
+    }
+    const jsonData = JSON.parse(data.toString());
+    const { updatedData, msg } = opsFunction(jsonData);
+    fs.writeFile("./tasks.json", JSON.stringify(updatedData), (err) => {
+      if (err) {
+        console.log("Error in adding tasks.");
+        throw err;
+      }
+      console.log(msg);
+    });
+  });
+}
+
 const command = process.argv[2];
 switch (command.split("-")[0]) {
   case "add":
-    fs.readFile("./tasks.json", (err, data) => {
-      if (err) {
-        console.log("Error in reading the tasks.json file: ", err);
-        throw err;
-      }
-      let jsonData = JSON.parse(data.toString());
+    readAndWrite((jsonData) => {
       const lastIndex =
         jsonData.tasks && jsonData.tasks.length != 0
           ? jsonData.tasks[jsonData.tasks.length - 1].id
@@ -52,22 +65,14 @@ switch (command.split("-")[0]) {
       } else {
         jsonData.tasks.push(task);
       }
-      fs.writeFile("./tasks.json", JSON.stringify(jsonData), (err) => {
-        if (err) {
-          console.log("Error in adding tasks.");
-          throw err;
-        }
-        console.log(`Task added successfully (ID: ${task.id})`);
-      });
+      return {
+        updatedData: jsonData,
+        msg: `Task added successfully (ID: ${task.id})`,
+      };
     });
     break;
   case "update":
-    fs.readFile("./tasks.json", (err, data) => {
-      if (err) {
-        console.log("Error in reading the tasks.json file: ", err);
-        throw err;
-      }
-      let jsonData = JSON.parse(data.toString());
+    readAndWrite((jsonData) => {
       const id = process.argv[3];
       const updatedDescription = process.argv[4];
       const taskIndex = jsonData.tasks.findIndex((task) => task.id == id);
@@ -77,43 +82,28 @@ switch (command.split("-")[0]) {
       }
       jsonData.tasks[taskIndex].description = updatedDescription;
       jsonData.tasks[taskIndex].updatedAt = Date.now();
-      fs.writeFile("./tasks.json", JSON.stringify(jsonData), (err) => {
-        if (err) {
-          console.log("Error in adding tasks.");
-          throw err;
-        }
-        console.log(`Task (ID: ${id}) updated successfully`);
-      });
+      return {
+        updatedData: jsonData,
+        msg: `Task (ID: ${id}) updated successfully `,
+      };
     });
     break;
   case "delete":
-    fs.readFile("./tasks.json", (err, data) => {
-      if (err) {
-        console.log("Error in reading the tasks.json file: ", err);
-        return err;
-      }
-      let jsonData = JSON.parse(data.toString());
+    readAndWrite((jsonData) => {
       const id = process.argv[3];
       const prevtasksCount = jsonData.tasks.length;
       jsonData.tasks = jsonData.tasks.filter((task) => task.id != id);
-      fs.writeFile("./tasks.json", JSON.stringify(jsonData), (err) => {
-        if (err) {
-          console.log("Error in adding tasks.");
-          throw err;
-        }
-        prevtasksCount != jsonData.tasks.length
-          ? console.log(`Task (ID: ${id}) deleted successfully`)
-          : console.log(`Task (ID: ${id}) doesn't exists.`);
-      });
+      return {
+        updatedData: jsonData,
+        msg:
+          prevtasksCount != jsonData.tasks.length
+            ? console.log(`Task (ID: ${id}) deleted successfully`)
+            : console.log(`Task (ID: ${id}) doesn't exists.`),
+      };
     });
     break;
   case "mark":
-    fs.readFile("./tasks.json", (err, data) => {
-      if (err) {
-        console.log("Error in reading the tasks.json file: ", err);
-        return err;
-      }
-      let jsonData = JSON.parse(data.toString());
+    readAndWrite((jsonData) => {
       const id = process.argv[3];
       const taskIndex = jsonData.tasks.findIndex((task) => task.id == id);
       if (taskIndex == -1) {
@@ -125,13 +115,10 @@ switch (command.split("-")[0]) {
           ? TASK_STATUS.DONE
           : TASK_STATUS.IN_PROGRESS;
       jsonData.tasks[taskIndex].updatedAt = Date.now();
-      fs.writeFile("./tasks.json", JSON.stringify(jsonData), (err) => {
-        if (err) {
-          console.log("Error in adding tasks.");
-          throw err;
-        }
-        console.log(`Task (ID: ${id}) status updated successfully`);
-      });
+      return {
+        updatedData: jsonData,
+        msg: `Task (ID: ${id}) status updated successfully`,
+      };
     });
     break;
   case "list":
